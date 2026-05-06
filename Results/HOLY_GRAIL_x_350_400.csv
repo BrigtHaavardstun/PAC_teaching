@@ -1,0 +1,2 @@
+,model,true_k,positive,negative,concepts,concept_probs,p_target,p_non_answer,predicted_k,is_correct,p_not_correct
+0,Qwen/Qwen3-4B-instruct-2507,20,[],"[350, 352]","[10, 11, 20]","[0.8519370060100374, 0.14804452590476042, 1.6576206404309702e-05]",1.6576206404309702e-05,1.8918787978439155e-06,10,False,0.9999834237935957

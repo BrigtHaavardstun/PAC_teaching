@@ -1,0 +1,76 @@
+{
+    "T, F, T, T, F, F": [
+        true,
+        false,
+        true,
+        true,
+        false,
+        false
+    ],
+    "True,False,True,True,False,False": [
+        true,
+        false,
+        true,
+        true,
+        false,
+        false
+    ],
+    "Yes,No,Yes,Yes,No,No": [
+        true,
+        false,
+        true,
+        true,
+        false,
+        false
+    ],
+    "1,0,1,1,0,0": [
+        true,
+        false,
+        true,
+        true,
+        false,
+        false
+    ],
+    "F\nT\nF\nF\nF\nF": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+    ],
+    "T\nF\nT\nT\nF\nF": [
+        true,
+        false,
+        true,
+        true,
+        false,
+        false
+    ],
+    "We need to output a single line with comma-separated T/F for each question in order. Let's compute:\n618 divisible by 7? 7*88=616 remainder 2 -> No.\n618 divisible by 11? 11*56=616 remainder 2 -> No.\n618 divisible by 13? 13*47=611; 13*48=624; not divisible -> No.\n618 divisible by 17? 17*36=612; 17*37=629; not divisible -> No.\n618 divisible by 19? 19*32=608; 19*33=627; not divisible -> No.\n618 divisible by 23? 23*26=598; 23*27=621; not divisible -> No.\nSo all F. Output: F,F,F,F,F,F\nF,F,F,F,F,F": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+    ],
+    "F,T,F,F,F, F?": [
+        false,
+        true,
+        false,
+        false,
+        false,
+        false
+    ],
+    "T\nF\nF\nBut must output comma-separated on single line with T/F values in order. So:\nT,F,F": [
+        true,
+        false,
+        false
+    ],
+    "T\nF\nF\nBut must output comma-separated on single line with T/F values in order. So: \nT,F,F": [
+        true,
+        false,
+        false
+    ]
+}

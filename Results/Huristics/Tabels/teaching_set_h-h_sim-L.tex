@@ -1,0 +1,22 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{llccc}
+\toprule
+Target & Error source & Item 1 & Item 2 & Item 3 \\
+\midrule
+\multirow{3}{*}{13} & TD & (1, F) & (13, T) & - \\
+ & no\_error & (351, T) & (368, F) & (391, F) \\
+ & Qwen/\allowbreak Qwen3-4B-instruct-2507 & (351, T) & (368, F) & (399, F) \\
+\midrule
+\multirow{3}{*}{23} & TD & (1, F) & (23, T) & - \\
+ & no\_error & (351, F) & (368, T) & (377, F) \\
+ & Qwen/\allowbreak Qwen3-4B-instruct-2507 & (350, F) & (351, F) & (368, T) \\
+\midrule
+\multirow{3}{*}{29} & TD & (1, F) & (29, T) & - \\
+ & no\_error & (351, F) & (364, F) & (377, T) \\
+ & Qwen/\allowbreak Qwen3-4B-instruct-2507 & (350, F) & (351, F) & (377, T) \\
+\midrule
+\bottomrule
+\end{tabular}
+\caption{Teaching sets generated for various error sources and target concepts. Using H\_homogeneity and sim-L. Four of the error sources are the LLMs, while the 'no\_error' model serves as a minimum TD teaching set as a baseline comparrision .}
+\end{table}
