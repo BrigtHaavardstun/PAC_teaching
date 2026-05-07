@@ -52,6 +52,37 @@ def find_c_target(C, x):
             return c
 
 
+def get_df_deduc_mean(path_to_df):
+    df = load_log(path_to_df)
+
+    # query type filter
+    query_type = "err_extraction"
+    df = df[df["query_type"] == query_type]
+
+    df['metadata'] = df['metadata'].apply(lambda x: ast.literal_eval(x) if isinstance(x, str) else x)
+
+    # This handles the extraction safely and is usually faster
+    df['x'] = [d.get('x') for d in df['metadata']]
+    df['c'] = [d.get('c') for d in df['metadata']]
+    df["ground_truth"] = [d.get('ground_truth') for d in df['metadata']]
+
+    df = df[["x", "c", "ground_truth", "parsed_response"]]
+    df["correct"] = df["ground_truth"] == df["parsed_response"]
+
+    # 1. Create a column for incorrect answers (True if wrong, False if right)
+    df["incorrect"] = ~df["correct"]
+
+    # 2. Group by x and c, then take the mean of the 'incorrect' column
+    result = df.groupby(["x"])["incorrect"].mean().reset_index()
+
+    # 3. Rename the column for clarity
+    result.rename(columns={"incorrect": "x-axis"}, inplace=True)
+
+    mean_over_x = result.groupby(["x"])["x-axis"].mean().reset_index()
+    print(mean_over_x.sort_values("x", ascending=False).head())
+    return mean_over_x
+
+
 def get_df_deduc_mean_weighted(path_to_df):
     df = load_log(path_to_df)
     df = df[df["query_type"] == "err_extraction"]
@@ -134,7 +165,7 @@ def plot(merged: pd.DataFrame):
 
 def run():
     df_induc = get_df_induc("usage_log_2td_concept.jsonl")
-    df_deduc = get_df_deduc_mean_weighted("usage_log_td2.jsonl")
+    df_deduc = get_df_deduc_mean("usage_log_td2.jsonl")
     merged = get_x_axis_for_pairs(df_induc, df_deduc)
 
     print(merged.sort_values("x-axis"))

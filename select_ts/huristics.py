@@ -1,5 +1,4 @@
 from select_ts.custom_typing import *
-from select_ts.ctd import find_min_ts
 
 from typing import List
 import pandas as pd
@@ -7,87 +6,206 @@ import numpy as np
 import math
 
 
-def select_teaching_set(c_target: int, X: List[int], C: List[int], p: float, q: float, err: GetError, label: GetLabel, sim_mode_L=False, h_mode_u=True, ts_size=5):
-    def sim(c: int, c_target: int) -> float:
-        sum_prob_same = 0
-        for x in X:
-            if label(c=c, x=x) == label(c=c_target, x=x):
-                sum_prob_same += 1
+def concept_similarity(c: int, c_target: int, X: List[int], label: GetLabel) -> float:
+    sum_prob_same = 0
+    for x in X:
+        if label(c=c, x=x) == label(c=c_target, x=x):
+            sum_prob_same += 1
 
-        return sum_prob_same / len(X)
+    return sum_prob_same / len(X)
 
-    def sim_L(c: int, c_target: int) -> float:
-        sum_prob_same = 0.0
-        for x in X:
-            if label(c, x) == label(c_target, x):
-                sum_prob_same += 1-err(c=c, x=x)
-            else:
-                sum_prob_same += err(c=c, x=x)
 
-        return sum_prob_same / len(X)
+def concept_similarity_with_error(c: int, c_target: int, X: List[int], label: GetLabel, err: GetError) -> float:
+    sum_prob_same = 0.0
+    for x in X:
+        if label(c, x) == label(c_target, x):
+            sum_prob_same += 1-err(c=c, x=x)
+        else:
+            sum_prob_same += err(c=c, x=x)
 
-    def h_adj_uniquness_scores(c_target: int, X: List[int], C: List[int], G: List[int], B: List[int], label: GetLabel, err: GetError):
-        EPS = 1e-9
-        uniqueness_scores = {x: 0.0 for x in X}
-        for x in X:
-            c_target_label = label(c=c_target, x=x)
-            p_target_correct = 1 - err(c=c_target, x=x)
-            if p_target_correct < EPS:          # LLM always wrong on target → useless x
-                continue                         # score stays 0.0
+    return sum_prob_same / len(X)
 
-            log_prob = 0.0
-            degenerate = False
-            for c in C:
-                if c == c_target:
-                    continue
-                if label(c=c, x=x) == c_target_label:
-                    p = err(c=c, x=x)           # want LLM to err on c
-                else:
-                    p = 1 - err(c=c, x=x)      # want LLM to be correct on c
-                if p < EPS:                     # factor is 0 → x can't distinguish this c
-                    degenerate = True
-                    break
-                log_prob += math.log(p)
 
-            if not degenerate:
-                uniqueness_scores[x] = p_target_correct * math.exp(log_prob)
-
-        return uniqueness_scores
-
-    def h_adj_homogeneity(c_target: int, X: List[int], C: List[int], G: List[int], B: List[int], label: GetLabel, err: GetError):
-        homogenitiy_scores = {x: 0.0 for x in X}
-
-        for x in X:
-            label_c_target = label(c=c_target, x=x)
-            expected_nr_good = 0.0
-            expected_nr_bad = 0.0
-
-            for g in G:
-                if label(c=g, x=x) == label_c_target:
-                    expected_nr_good += 1 - err(c=g, x=x)
-                else:
-                    expected_nr_good += err(c=g, x=x)
-
-            for b in B:
-                if label(c=b, x=x) == label_c_target:
-                    expected_nr_bad += 1 - err(c=b, x=x)
-                else:
-                    expected_nr_bad += err(c=b, x=x)
-
-            prob_of_good = (expected_nr_good) / (expected_nr_good + expected_nr_bad)
-            homogenitiy_scores[x] = prob_of_good  # we minimize the prob of bad!
-
-        return homogenitiy_scores
-
-    sim_curr: SimFunc = sim_L if sim_mode_L else sim
-    hurristic_curr: HuristicFunc = h_adj_uniquness_scores if h_mode_u else h_adj_homogeneity
-    # Make a set of ease for quick check of inclusion
+def get_good_bad_concepts(
+    c_target: int,
+    X: List[int],
+    C: List[int],
+    q: float,
+    label: GetLabel,
+    err: GetError,
+    sim_mode_L: bool = False,
+) -> tuple[List[int], List[int]]:
+    sim_curr = concept_similarity_with_error if sim_mode_L else concept_similarity
     C_set = set(C)
-    G_set = {c for c in C if sim_curr(c=c, c_target=c_target) >= q}
+    if sim_mode_L:
+        G_set = {c for c in C if sim_curr(c=c, c_target=c_target, X=X, label=label, err=err) >= q}
+    else:
+        G_set = {c for c in C if sim_curr(c=c, c_target=c_target, X=X, label=label) >= q}
     B_set = C_set - G_set
 
-    G = sorted(G_set)
-    B = sorted(B_set)
+    return sorted(G_set), sorted(B_set)
+
+
+def h_adj_uniquness_scores_old(c_target: int, X: List[int], C: List[int], G: List[int], B: List[int], label: GetLabel, err: GetError):
+    EPS = 1e-9
+    uniqueness_scores = {x: 0.0 for x in X}
+    for x in X:
+        c_target_label = label(c=c_target, x=x)
+        p_target_correct = 1 - err(c=c_target, x=x)
+        if p_target_correct < EPS:          # LLM always wrong on target → useless x
+            continue                         # score stays 0.0
+
+        log_prob = 0.0
+        degenerate = False
+        for c in C:
+            if c == c_target:
+                continue
+            if label(c=c, x=x) == c_target_label:
+                p = err(c=c, x=x)           # want LLM to err on c
+            else:
+                p = 1 - err(c=c, x=x)      # want LLM to be correct on c
+            if p < EPS:                     # factor is 0 → x can't distinguish this c
+                degenerate = True
+                break
+            log_prob += math.log(p)
+
+        if not degenerate:
+            uniqueness_scores[x] = p_target_correct * math.exp(log_prob)
+
+    return uniqueness_scores
+
+
+def h_adj_uniquness_scores(c_target: int, X: List[int], C: List[int], label: GetLabel, err: GetError):
+    uniqueness_scores = {x: 0.0 for x in X}
+    for x in X:
+        expected_nr_match = np.mean([1-err(c, x) if label(c=c, x=x) == label(c=c_target, x=x) else err(c, x)
+                                     for c in C if c != c_target] + [err(c=c_target, x=x)])
+
+        uniqueness_scores[x] = float(expected_nr_match)
+
+    return uniqueness_scores
+
+
+def h_adj_uniqueness_scores(c_target: int, X: List[int], C: List[int], label: GetLabel, err: GetError):
+    return h_adj_uniquness_scores(
+        c_target=c_target,
+        X=X,
+        C=C,
+        label=label,
+        err=err,
+    )
+
+
+def h_adj_homogeneity_old(c_target: int, X: List[int], C: List[int], G: List[int], B: List[int], label: GetLabel, err: GetError):
+    homogenitiy_scores = {x: 0.0 for x in X}
+
+    for x in X:
+        label_c_target = label(c=c_target, x=x)
+        expected_nr_good = 0.0
+        expected_nr_bad = 0.0
+
+        for g in G:
+            if label(c=g, x=x) == label_c_target:
+                expected_nr_good += 1 - err(c=g, x=x)
+            else:
+                expected_nr_good += err(c=g, x=x)
+
+        for b in B:
+            if label(c=b, x=x) == label_c_target:
+                expected_nr_bad += 1 - err(c=b, x=x)
+            else:
+                expected_nr_bad += err(c=b, x=x)
+
+        denominator = expected_nr_good + expected_nr_bad
+        if denominator == 0:
+            continue
+        prob_of_good = expected_nr_good / denominator
+        homogenitiy_scores[x] = prob_of_good  # we minimize the prob of bad!
+
+    return homogenitiy_scores
+
+
+def h_adj_homogeneity(c_target: int, X: List[int], C: List[int], label: GetLabel, err: GetError):
+    homogenitiy_scores = {x: 0.0 for x in X}
+
+    for x in X:
+        label_c_target = label(c=c_target, x=x)
+        concept_prob = []
+        for c in C:
+            if label(c=c, x=x) == label_c_target:
+                concept_prob.append(1-err(c=c, x=x))
+            else:
+                concept_prob.append(err(c=c, x=x))
+
+        sim_scores = [concept_similarity_with_error(
+            c=c, c_target=c_target, X=X, label=label, err=err)*prob for c, prob in zip(C, concept_prob)]
+
+        if sum(concept_prob) == 0:
+            homogenitiy_scores[x] = 0
+        else:
+            homogenitiy_scores[x] = float(np.mean(sim_scores))/sum(concept_prob)
+
+    return homogenitiy_scores
+
+
+def h_adj_homogeneity_scores(c_target: int, X: List[int], C: List[int], label: GetLabel, err: GetError):
+    return h_adj_homogeneity(
+        c_target=c_target,
+        X=X,
+        C=C,
+        label=label,
+        err=err,
+    )
+
+
+def h_approix(c_target: int, X: List[int], C: List[int], G: List[int], B: List[int], label: GetLabel, err: GetError):
+    approx_scores = {x: 0.0 for x in X}
+    similarity_scores = {
+        c: concept_similarity_with_error(c=c, c_target=c_target, X=X, label=label, err=err)
+        for c in C
+    }
+
+    for x in X:
+        target_label = label(c=c_target, x=x)
+        same_label_concepts = [
+            c for c in C
+            if label(c=c, x=x) == target_label
+        ]
+
+        if not same_label_concepts:
+            continue
+
+        approx_scores[x] = sum(
+            similarity_scores[c]
+            for c in same_label_concepts
+        ) / len(same_label_concepts)
+
+    return approx_scores
+
+
+def h_approx_scores(c_target: int, X: List[int], C: List[int], G: List[int], B: List[int], label: GetLabel, err: GetError):
+    return h_approix(
+        c_target=c_target,
+        X=X,
+        C=C,
+        G=G,
+        B=B,
+        label=label,
+        err=err,
+    )
+
+
+def select_teaching_set(c_target: int, X: List[int], C: List[int], p: float, q: float, err: GetError, label: GetLabel, sim_mode_L=False, h_mode_u=True, ts_size=5):
+    hurristic_curr: HuristicFunc = h_adj_uniquness_scores if h_mode_u else h_adj_homogeneity
+    G, B = get_good_bad_concepts(
+        c_target=c_target,
+        X=X,
+        C=C,
+        q=q,
+        label=label,
+        err=err,
+        sim_mode_L=sim_mode_L,
+    )
 
     h_scores = hurristic_curr(c_target=c_target, X=X, C=C, G=G, B=B, label=label, err=err)
     best_x = sorted(X, key=lambda x: h_scores[x], reverse=True)
@@ -138,6 +256,8 @@ def escape_latex(text: str) -> str:
 
 
 def run():
+    from select_ts.ctd import find_min_ts
+
     SLMS = [
         "TD",
         "no_error",
