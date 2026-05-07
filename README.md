@@ -1,6 +1,6 @@
-# PAC Teaching Experiments
+# Teaching and Learning under Deductive Errors
 
-This repository contains the research code, experiment logs, and generated figures associated with a paper on teaching set construction for language-model learners under deductive error.
+This repository contains the research code, experiment logs, and generated figures associated with the paper "Teaching and Learning under Deductive Errors", on teaching under deductive errors. This project contains code and experiments for evaluating language-model learners under deductive error.
 
 The project studies a simple but useful concept class: divisibility / multiples-of-`k` concepts. The experiments ask how errors in low-level deductive judgements, such as whether `c` divides `x`, affect downstream concept identification and teaching performance.
 
